@@ -35,6 +35,15 @@ services:
       - back-tier
     secrets:
       - postgres_password
+    depends_on:
+      - splunk-otel-collector
+    environment:
+      # this var contains a map of resource attributes
+      # read https://github.com/signalfx/splunk-otel-java/#basic-configuration for more info about resource attributes
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=atsea,deployment.environment=test
+      # by default the agent tries to send data to a collector deployed on localhost
+      # since the collector is deployed in another containers those env vars have to be overriden
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://splunk-otel-collector:4317
 
   payment_gateway:
     build:
@@ -43,6 +52,28 @@ services:
       - payment
     secrets:
       - payment_token
+
+  # see docker-compose example at https://github.com/signalfx/splunk-otel-collector/blob/main/examples/docker-compose/docker-compose.yml
+  # you need to fill the realm and access token config in the .env file in this directory
+  # docker-compose will source it and substitute env vars in this file with values from .env
+  splunk-otel-collector:
+    image: quay.io/signalfx/splunk-otel-collector:latest
+    environment:
+      - SPLUNK_ACCESS_TOKEN=${SPLUNK_ACCESS_TOKEN}
+      - SPLUNK_REALM=${SPLUNK_REALM}
+    ports:
+      - "13133:13133"
+      - "14250:14250"
+      - "14268:14268"
+      - "4317:4317"
+      - "6060:6060"
+      - "7276:7276"
+      - "8888:8888"
+      - "9080:9080"
+      - "9411:9411"
+      - "9943:9943"
+    networks:
+      - back-tier
 
 networks:
   front-tier:
